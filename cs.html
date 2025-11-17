@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2300897b' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3Cpath fill='%2300897b' d='M15 9h-2V7h-2v2H9v2h2v2h2v-2h2z'/%3E%3C/svg%3E" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能导诊 - 医信通</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="app-sider">
+        <div class="logo">
+          <h2>医信通</h2>
+          <button class="trigger" onclick="toggleSider()">收起</button>
+        </div>
+        <nav class="menu">
+          <ul>
+            <li class="menu-item">
+              <a href="index.html">
+                <span class="icon">🏠</span>
+                <span class="label">仪表盘</span>
+              </a>
+            </li>
+            <li class="menu-item">
+              <a href="document.html">
+                <span class="icon">📄</span>
+                <span class="label">智能文档工作台</span>
+              </a>
+            </li>
+            <li class="menu-item">
+              <a href="report.html">
+                <span class="icon">➕</span>
+                <span class="label">医疗诊断报告</span>
+              </a>
+            </li>
+            <li class="menu-item active">
+              <a href="guide.html">
+                <span class="icon">💬</span>
+                <span class="label">智能导诊</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+      
+      <div class="main-content">
+   
+        
+        <main class="app-content">
+          <div class="ai-guide">
+            <h1>智能导诊</h1>
+            
+            <div class="card">
+              <div class="guide-intro">
+                <div class="guide-info-box">
+                  <p class="guide-info-text">💡 <strong>智能导诊服务说明：</strong></p>
+                  <ul class="guide-info-list">
+                    <li>请详细描述您的症状、持续时间和相关不适</li>
+                    <li>系统将根据您提供的信息推荐合适的科室</li>
+                    <li>最终诊断请以医生面诊结果为准</li>
+                    <li>请尽量详细描述您的症状、持续时间和相关不适</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="chat-container modern-chat-container">
+                <div class="chat-header">
+                  <h3>🤖 智能导诊助手</h3>
+                  <button class="new-chat-btn" onclick="startNewChat()">🆕 新对话</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                  <div class="welcome-message">
+                    <div class="welcome-avatar">⚕️</div>
+                    <div class="welcome-text">
+                      <h4>欢迎使用智能导诊系统</h4>
+                      <p>请描述您的症状，我将为您推荐合适的科室。</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="chat-input-container">
+                  <div class="chat-input">
+                    <textarea 
+                      id="messageInput" 
+                      placeholder="请输入您的症状描述..."
+                      rows="1"
+                      onkeypress="handleKeyPress(event)"></textarea>
+                    <div class="input-actions">
+                      <button id="voiceCallButton" class="action-btn voice-call-btn" title="语音通话">
+                        📞 语音通话
+                      </button>
+                      <button id="voiceButton" class="action-btn voice-btn" title="语音输入">
+                        🎤 语音输入
+                      </button>
+                      <button class="action-btn upload-btn" onclick="document.getElementById('fileInput').click()" title="上传文件">
+                  📁 文件上传
+                </button>
+                      <input type="file" id="fileInput" class="hidden" onchange="handleFileUpload(event)" accept="image/*,application/pdf,.doc,.docx,.txt">
+                      <button id="sendButton" class="send-btn" onclick="sendMessage()">
+                        🚀 发送
+                      </button>
+                    </div>
+                  </div>
+                  <!-- 语音识别结果显示区域 -->
+                  <div id="voiceResultContainer" class="voice-result-container hidden">
+                    <div class="voice-result-header">
+                      <span>🎤 语音识别中...</span>
+                    </div>
+                    <div id="voiceResultText" class="voice-result-text"></div>
+                    <div id="voiceVisualizerContainer" class="voice-visualizer-container"></div>
+                  </div>
+                  
+
+                  
+                  <div id="filePreviewContainer" class="file-preview-container hidden">
+                    <div id="filePreviewContent" class="file-preview-content"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="additional-info-box">
+                  <p class="additional-info-text">
+                  ⚠️ <strong>温馨提示：</strong>智能导诊仅供参考，不能替代专业医生的诊断。如有紧急情况，请立即前往医院就诊。
+                </p>
+              </div>
+              
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    
+    <script>
+      // Dify API 配置
+      const DIFY_API_KEY = 'app-c6suQBrrp11wDJh6ItBugWlr';
+      const DIFY_BASE_URL = 'http://192.168.1.102/v1';
+      const DIFY_USER_ID = 'web_user_' + Date.now();
+      
+      // 定义全局用户ID，用于Dify API调用
+      const userId = DIFY_USER_ID;
+      
+      // 自动调整输入框高度
+      function setupAutoResizeTextarea() {
+        const textarea = document.querySelector('.chat-input textarea');
+        if (textarea) {
+          // 初始化时调整一次高度
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+          
+          // 输入时自动调整高度
+          textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+          });
+        }
+      }
+      
+      // 侧边栏折叠功能
+      function toggleSider() {
+        const sider = document.querySelector('.app-sider');
+        const trigger = document.querySelector('.trigger');
+        
+        if (sider.classList.contains('collapsed')) {
+          sider.classList.remove('collapsed');
+          trigger.textContent = '收起';
+        } else {
+          sider.classList.add('collapsed');
+          trigger.textContent = '展开';
+        }
+      }
+      
+      // 发送消息功能 - 已合并为统一的实现
+      
+      // 添加"正在思考"消息
+      function addThinkingMessage(messageId) {
+        const chatMessages = document.getElementById('chatMessages');
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.id = messageId;
+        messageDiv.className = 'message-item assistant thinking';
+        
+        messageDiv.innerHTML = `
+          <div class="avatar-container">
+            <div class="message-avatar">🤖</div>
+            <div class="message-sender">智能导诊助手</div>
+          </div>
+          <div class="message-content">
+            <div class="typing-indicator">正在分析您的症状...</div>
+          </div>
+        `;
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // 移除"正在思考"消息
+      function removeThinkingMessage(messageId) {
+        const messageDiv = document.getElementById(messageId);
+        if (messageDiv) {
+          messageDiv.remove();
+        }
+      }
+      
+      // 显示思考状态
+      function showThinking() {
+        console.log('显示思考状态');
+        const thinkingMessageId = 'thinking-message-' + Date.now();
+        addThinkingMessage(thinkingMessageId);
+        return thinkingMessageId;
+      }
+      
+      // 隐藏思考状态
+      function hideThinking() {
+        console.log('隐藏思考状态');
+        const thinkingMessage = document.querySelector('.message-item.assistant.thinking');
+        if (thinkingMessage) {
+          thinkingMessage.remove();
+        }
+      }
+      
+      // 全局变量
+      let currentFiles = []; // 存储上传的文件
+      let conversationId = ''; // 会话ID，用于维持对话上下文
+      let voiceRecorder = null; // 语音录音器实例
+      
+      // VoiceRecorder 类 - 集成simple-voice-input.html的高级语音功能
+      class VoiceRecorder {
+        constructor() {
+          this.voiceBtn = document.getElementById('voiceButton');
+          this.voiceCallBtn = document.getElementById('voiceCallButton');
+          this.statusDiv = document.getElementById('voiceResultContainer');
+          this.resultText = document.getElementById('voiceResultText');
+          this.isRecording = false;
+          this.isVoiceCall = false; // 语音通话模式标志
+          this.recognition = null;
+          this.stream = null;
+          this.mediaRecorder = null;
+          this.audioChunks = [];
+          this.audioContext = null;
+          this.analyser = null;
+          this.canvas = null;
+          this.canvasCtx = null;
+          this.animationId = null;
+          this.startTime = null;
+          this.durationInterval = null;
+          this.silenceTimer = null;
+          this.hideTimer = null; // 用于跟踪语音预览容器的延迟隐藏定时器
+          this.maxRecordingTime = 60000; // 最大录音时间60秒
+          
+          this.init();
+        }
+        
+        init() {
+          this.initSpeechRecognition();
+          this.voiceBtn.addEventListener('click', () => this.toggleVoiceInput());
+          this.voiceCallBtn.addEventListener('click', () => this.toggleVoiceCall());
+        }
+        
+        initSpeechRecognition() {
+          try {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+              console.warn('浏览器不支持Web Speech API');
+              return false;
+            }
+            
+            this.recognition = new SpeechRecognition();
+            this.recognition.lang = 'zh-CN';
+            this.recognition.continuous = true;
+            this.recognition.interimResults = true;
+            
+            // 停顿检测配置
+            this.silenceTimer = null;
+            this.silenceThreshold = 3000; // 3秒停顿阈值
+            this.lastResultTime = 0;
+            this.currentTranscript = '';
+            
+            this.recognition.onresult = (event) => {
+              let finalTranscript = '';
+              let interimTranscript = '';
+              
+              for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                  finalTranscript += transcript;
+                } else {
+                  interimTranscript += transcript;
+                }
+              }
+              
+              const currentText = interimTranscript || finalTranscript;
+              this.showVoiceResult(currentText, !finalTranscript);
+              
+              // 更新最后识别时间
+              this.lastResultTime = Date.now();
+              this.currentTranscript = currentText;
+              
+              // 清除之前的停顿计时器
+              if (this.silenceTimer) {
+                clearTimeout(this.silenceTimer);
+              }
+              
+              if (finalTranscript) {
+                console.log('语音识别最终结果:', finalTranscript);
+                if (this.isVoiceCall) {
+                  // 语音通话模式：发送消息但不停止录音
+                  this.sendVoiceMessage(finalTranscript);
+                } else {
+                  // 普通语音输入模式：停止录音并发送
+                  this.stopRecording();
+                  this.sendVoiceMessage(finalTranscript);
+                }
+              } else if (currentText && this.isVoiceCall) {
+                // 在语音通话模式下，如果有临时结果，设置停顿检测
+                this.silenceTimer = setTimeout(() => {
+                  console.log('检测到3秒停顿，自动发送:', this.currentTranscript);
+                  // 发送当前识别结果但不停止录音
+                  this.sendVoiceMessage(this.currentTranscript);
+                }, this.silenceThreshold);
+              }
+            };
+            
+            this.recognition.onend = () => {
+              console.log('语音识别结束');
+              if (this.isRecording && this.isVoiceCall) {
+                // 语音通话模式下，自动重启识别
+                console.log('语音通话模式下自动重启识别');
+                this.recognition.start();
+              } else {
+                this.stopRecording();
+              }
+            };
+            
+            this.recognition.onerror = (event) => {
+              console.error('语音识别错误:', event.error);
+              if (this.isRecording && this.isVoiceCall) {
+                // 语音通话模式下，尝试重启识别
+                console.log('语音通话模式下尝试重启识别');
+                setTimeout(() => {
+                  if (this.isRecording) {
+                    this.recognition.start();
+                  }
+                }, 1000);
+              } else {
+                this.stopRecording();
+                alert('语音识别出错: ' + event.error);
+              }
+            };
+            
+            return true;
+          } catch (error) {
+            console.error('初始化语音识别失败:', error);
+            return false;
+          }
+        }
+        
+        async toggleVoiceInput() {
+          if (this.isRecording) {
+            this.stopRecording();
+          } else {
+            // 切换功能前确保清除所有定时器
+            this.clearAllTimers();
+            this.isVoiceCall = false;
+            await this.startRecording();
+          }
+        }
+        
+        async toggleVoiceCall() {
+          if (this.isRecording) {
+            this.stopRecording();
+          } else {
+            // 切换功能前确保清除所有定时器
+            this.clearAllTimers();
+            this.isVoiceCall = true;
+            await this.startRecording();
+          }
+        }
+        
+        async startRecording() {
+          try {
+            // 检查浏览器支持
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+              throw new Error('您的浏览器不支持录音功能');
+            }
+            
+            this.updateStatus('🎤 正在获取麦克风权限...');
+            
+            // 获取麦克风权限
+            this.stream = await navigator.mediaDevices.getUserMedia({ 
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100
+              }
+            });
+            
+            // 初始化音频上下文
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.analyser = this.audioContext.createAnalyser();
+            const source = this.audioContext.createMediaStreamSource(this.stream);
+            source.connect(this.analyser);
+            
+            this.analyser.fftSize = 256;
+            
+            // 创建音频可视化器
+            this.createVisualizer();
+            
+            // 开始录音
+            this.mediaRecorder = new MediaRecorder(this.stream);
+            this.audioChunks = [];
+            
+            this.mediaRecorder.ondataavailable = (event) => {
+              this.audioChunks.push(event.data);
+            };
+            
+            this.mediaRecorder.start(100);
+            
+            // 开始语音识别
+            this.recognition.start();
+            
+            // 开始音频可视化
+            this.startVisualization();
+            
+            this.isRecording = true;
+            
+            if (this.isVoiceCall) {
+              // 更新语音通话按钮状态
+              this.voiceCallBtn.classList.add('recording');
+              this.voiceCallBtn.textContent = '⏹️结束通话';
+              this.voiceCallBtn.title = '结束语音通话';
+              this.updateStatus('📞 语音通话已开始，正在录音中...');
+            } else {
+              // 更新语音输入按钮状态
+              this.voiceBtn.classList.add('recording');
+              this.voiceBtn.textContent = '⏹️停止录音';
+              this.voiceBtn.title = '停止录音';
+              this.updateStatus('🎤 正在录音中...');
+            }
+            
+          } catch (error) {
+            console.error('录音启动失败:', error);
+            let errorMessage = '录音启动失败';
+            
+            if (error.name === 'NotAllowedError') {
+              errorMessage = '无法访问麦克风，请检查权限设置';
+            } else if (error.name === 'NotFoundError') {
+              errorMessage = '未找到麦克风设备';
+            } else if (error.name === 'NotReadableError') {
+              errorMessage = '麦克风被其他应用占用';
+            } else {
+              errorMessage = '录音启动失败: ' + error.message;
+            }
+            
+            this.updateStatus('❌ ' + errorMessage);
+            alert(errorMessage);
+            
+            // 重置状态
+            this.stopRecording();
+          }
+        }
+        
+        clearAllTimers() {
+          // 清除所有相关定时器
+          if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+          }
+          if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+            this.hideTimer = null;
+          }
+          if (this.durationInterval) {
+            clearInterval(this.durationInterval);
+            this.durationInterval = null;
+          }
+        }
+        
+        stopRecording() {
+          this.isRecording = false;
+          this.isVoiceCall = false;
+          
+          // 清除所有定时器
+          this.clearAllTimers();
+            
+            // 停止音频可视化
+            if (this.animationId) {
+              cancelAnimationFrame(this.animationId);
+              this.animationId = null;
+            }
+            
+            if (this.recognition) {
+              this.recognition.stop();
+            }
+            
+            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+              this.mediaRecorder.stop();
+            }
+            
+            if (this.stream) {
+              this.stream.getTracks().forEach(track => track.stop());
+            }
+            
+            if (this.audioContext) {
+              this.audioContext.close();
+            }
+            
+            // 恢复按钮状态
+            this.voiceCallBtn.classList.remove('recording');
+            this.voiceCallBtn.textContent = '📞 语音通话';
+            this.voiceCallBtn.title = '语音通话';
+            
+            this.voiceBtn.classList.remove('recording');
+            this.voiceBtn.textContent = '🎤 语音输入';
+            this.voiceBtn.title = '语音输入';
+            
+            this.hideVoiceResult();
+            
+            // 重置时间
+            this.startTime = null;
+          }
+        
+        // 发送语音消息
+        sendVoiceMessage(text) {
+          if (text.trim()) {
+            console.log('发送语音消息:', text);
+            // 将识别结果填入输入框并发送
+            document.getElementById('messageInput').value = text;
+            sendMessage();
+            // 清空当前转录内容，准备下一次识别
+            this.currentTranscript = '';
+            if (this.isVoiceCall) {
+              this.showVoiceResult('', true); // 清空显示但保持语音识别界面
+            }
+          }
+        }
+        
+        updateStatus(message) {
+          if (this.statusDiv) {
+            this.statusDiv.classList.remove('hidden');
+            const header = this.statusDiv.querySelector('.voice-result-header span');
+            if (header) {
+              header.textContent = message;
+            }
+          }
+        }
+        
+        showVoiceResult(text, isInterim) {
+          if (this.resultText) {
+            this.resultText.textContent = text;
+            this.resultText.classList.toggle('interim', isInterim);
+          }
+        }
+        
+        hideVoiceResult() {
+          // 清除之前的延迟隐藏定时器，避免冲突
+          if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+          }
+          
+          this.hideTimer = setTimeout(() => {
+            if (this.statusDiv && !this.isRecording) {
+              this.statusDiv.classList.add('hidden');
+            }
+            this.hideTimer = null;
+          }, 1000);
+        }
+        
+        createVisualizer() {
+          // 禁用音频可视化器创建
+          //if (!this.statusDiv) return;
+          
+          // 创建音频可视化器容器
+          //const visualizerContainer = document.createElement('div');
+          //visualizerContainer.className = 'audio-visualizer';
+          
+          // 创建canvas元素
+          //this.canvas = document.createElement('canvas');
+          //this.canvas.className = 'visualizer-canvas';
+          //this.canvas.width = this.statusDiv.offsetWidth - 24; // 减去padding
+          //this.canvas.height = 60;
+          
+          //visualizerContainer.appendChild(this.canvas);
+          //this.statusDiv.insertBefore(visualizerContainer, this.resultText);
+          
+          //this.canvasCtx = this.canvas.getContext('2d');
+        }
+        
+        startVisualization() {
+          if (!this.canvasCtx || !this.analyser) return;
+          
+          const bufferLength = this.analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          
+          const draw = () => {
+            if (!this.isRecording) return;
+            
+            this.animationId = requestAnimationFrame(draw);
+            
+            this.analyser.getByteFrequencyData(dataArray);
+            
+            this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            const barWidth = (this.canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+            
+            for (let i = 0; i < bufferLength; i++) {
+              barHeight = (dataArray[i] / 255) * this.canvas.height;
+              
+              const gradient = this.canvasCtx.createLinearGradient(0, this.canvas.height - barHeight, 0, this.canvas.height);
+              gradient.addColorStop(0, 'rgba(0, 137, 123, 0.8)');
+              gradient.addColorStop(1, 'rgba(38, 166, 154, 0.4)');
+              
+              this.canvasCtx.fillStyle = gradient;
+              this.canvasCtx.fillRect(x, this.canvas.height - barHeight, barWidth, barHeight);
+              
+              x += barWidth + 1;
+            }
+          };
+          
+          draw();
+        }
+      }
+      
+      // DOMContentLoaded事件监听器确保DOM元素加载完毕后再绑定事件
+      document.addEventListener('DOMContentLoaded', function() {
+          console.log('======= DOMContentLoaded事件触发 =======');
+          
+          // 设置输入框自动调整高度
+          setupAutoResizeTextarea();
+          
+          // 初始化语音录音器
+          voiceRecorder = new VoiceRecorder();
+          
+          // 获取DOM元素
+          console.log('查找DOM元素...');
+          const sendButton = document.getElementById('sendButton');
+          const messageInput = document.getElementById('messageInput');
+          
+          console.log('元素查找结果:', {
+              sendButton: sendButton ? '找到' : '未找到',
+              messageInput: messageInput ? '找到' : '未找到',
+              voiceButton: voiceButton ? '找到' : '未找到'
+          });
+          
+          console.log('======= 事件绑定完成 =======');
+        });
+      
+      // 暴露测试函数到全局，方便直接调用
+        window.testChat = function() {
+            console.log('======= 全局测试函数testChat被调用 =======');
+            console.log('如果您在浏览器控制台中看到这条消息，请确保点击页面上的🔍 测试按钮或发送按钮来实际触发API调用。');
+            
+            try {
+                const messageInput = document.getElementById('messageInput');
+                if (messageInput) {
+                    messageInput.value = '这是一条测试消息';
+                    console.log('✅ 消息输入框已设置测试文本');
+                } else {
+                    console.warn('⚠️ 未找到消息输入框，但仍将尝试发送');
+                }
+                
+                console.log('✅ 开始调用sendMessage函数...');
+                sendMessage();
+            } catch (error) {
+                console.error('❌ 测试函数执行失败:', error);
+                alert('测试执行失败，请查看控制台获取详细信息');
+            }
+        };
+      
+      // 处理按键事件
+      function handleKeyPress(event) {
+        console.log('handleKeyPress函数被调用，按键:', event.key);
+        if (event.key === 'Enter' && !event.shiftKey) {
+          console.log('检测到Enter键（无Shift），调用sendMessage()');
+          event.preventDefault();
+          sendMessage();
+        }
+      }
+      
+      // 处理文件上传 - 兼容Edge浏览器版本
+      function handleFileUpload(event) {
+        // 确保event对象存在且包含target属性
+        if (!event || !event.target) {
+          console.error('事件对象无效');
+          return;
+        }
+        
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        // 清空当前文件列表和预览
+        currentFiles = [];
+        const previewContainer = document.getElementById('filePreviewContainer');
+        const previewContent = document.getElementById('filePreviewContent');
+        
+        // 确保DOM元素存在
+        if (!previewContainer || !previewContent) {
+          console.error('预览容器元素未找到');
+          return;
+        }
+        
+        // 清空预览内容
+        previewContent.innerHTML = '';
+        
+        // 为每个文件创建预览
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          currentFiles.push(file);
+          
+          // 检查文件大小
+          const maxSizeMB = 15; // 根据DifyAPI要求，最大15MB
+          if (file.size > maxSizeMB * 1024 * 1024) {
+            // 使用标准的alert，确保Edge兼容
+            window.alert(`${file.name} 文件大小超过限制(${maxSizeMB}MB)`);
+            continue;
+          }
+          
+          // 创建预览元素
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-preview-item';
+          
+          // 根据文件类型显示不同图标
+          let icon = '📄';
+          if (file.type && file.type.startsWith('image/')) {
+            icon = '🖼️';
+            // 对于图片，创建带缩略图的预览
+            // 使用Edge兼容的方式创建预览
+            try {
+              // 检查FileReader API是否可用
+              if (window.FileReader) {
+                const reader = new FileReader();
+                
+                // 使用函数作用域保存当前索引和文件名，避免闭包问题
+                reader.onload = (function(fileIndex, fileName) {
+                  return function(e) {
+                    if (e && e.target && e.target.result) {
+                      const imgSrc = e.target.result;
+                      // 使用字符串连接而非多行字符串，确保JavaScript语法正确
+                      fileItem.innerHTML = '<img src="' + imgSrc + '" alt="' + fileName + '" class="file-preview-thumbnail">' +
+                                          '<div class="file-preview-info">' +
+                                          '  <span class="file-preview-name">' + fileName + '</span>' +
+                                          '  <span class="file-preview-size">' + ((file.size / 1024).toFixed(1)) + 'KB</span>' +
+                                          '  <span class="file-preview-remove" data-index="' + fileIndex + '">&times;</span>' +
+                                          '</div>';
+                      
+                      // 为移除按钮添加事件监听器，避免使用内联onclick
+                      const removeBtn = fileItem.querySelector('.file-preview-remove');
+                      if (removeBtn) {
+                        removeBtn.onclick = function() {
+                          removeFile(parseInt(this.getAttribute('data-index')));
+                        };
+                      }
+                    }
+                  };
+                })(i, file.name);
+                
+                // 使用readAsDataURL方法读取文件
+                reader.readAsDataURL(file);
+              } else {
+                // 如果FileReader不可用，显示基本信息
+                // 使用字符串连接而非多行字符串，确保JavaScript语法正确
+                fileItem.innerHTML = '<div class="file-preview-info">' +
+                                    '  <span class="file-preview-icon">' + icon + '</span>' +
+                                    '  <span class="file-preview-name">' + file.name + '</span>' +
+                                    '  <span class="file-preview-size">' + ((file.size / 1024).toFixed(1)) + 'KB</span>' +
+                                    '  <span class="file-preview-remove" data-index="' + i + '">&times;</span>' +
+                                    '</div>';
+                
+                // 为移除按钮添加事件监听器
+                const removeBtn = fileItem.querySelector('.file-preview-remove');
+                if (removeBtn) {
+                  removeBtn.onclick = function() {
+                    removeFile(parseInt(this.getAttribute('data-index')));
+                  };
+                }
+              }
+            } catch (error) {
+                console.error('处理图片预览时出错:', error);
+                // 出错时显示基本信息
+                // 使用字符串连接而非多行字符串，确保JavaScript语法正确
+                fileItem.innerHTML = '<div class="file-preview-info">' +
+                                    '  <span class="file-preview-icon">' + icon + '</span>' +
+                                    '  <span class="file-preview-name">' + file.name + '</span>' +
+                                    '  <span class="file-preview-size">' + ((file.size / 1024).toFixed(1)) + 'KB</span>' +
+                                    '  <span class="file-preview-remove" data-index="' + i + '">&times;</span>' +
+                                    '</div>';
+              
+              // 为移除按钮添加事件监听器
+              const removeBtn = fileItem.querySelector('.file-preview-remove');
+              if (removeBtn) {
+                removeBtn.onclick = function() {
+                  removeFile(parseInt(this.getAttribute('data-index')));
+                };
+              }
+            }
+          } else {
+              if (file.type && file.type.startsWith('audio/')) {
+                icon = '🔊';
+              }
+              // 使用字符串连接而非多行字符串，确保JavaScript语法正确
+              fileItem.innerHTML = '<div class="file-preview-info">' +
+                                  '  <span class="file-preview-icon">' + icon + '</span>' +
+                                  '  <span class="file-preview-name">' + file.name + '</span>' +
+                                  '  <span class="file-preview-size">' + ((file.size / 1024).toFixed(1)) + 'KB</span>' +
+                                  '  <span class="file-preview-remove" data-index="' + i + '">&times;</span>' +
+                                  '</div>';
+            
+            // 为移除按钮添加事件监听器
+            const removeBtn = fileItem.querySelector('.file-preview-remove');
+            if (removeBtn) {
+              removeBtn.onclick = function() {
+                removeFile(parseInt(this.getAttribute('data-index')));
+              };
+            }
+          }
+          
+          // 添加文件项到预览内容
+          previewContent.appendChild(fileItem);
+        }
+        
+        // 显示预览容器
+        previewContainer.style.display = currentFiles.length > 0 ? 'block' : 'none';
+        
+        // 清空文件输入，允许再次选择同一文件
+        try {
+          event.target.value = '';
+          // Edge浏览器中可能需要额外处理
+          if (event.target.value) {
+            event.target.type = '';
+            event.target.type = 'file';
+          }
+        } catch (error) {
+          console.error('重置文件输入时出错:', error);
+        }
+      }
+      
+      // 移除文件 - 兼容Edge浏览器版本
+      function removeFile(index) {
+        // 参数验证
+        if (typeof index !== 'number' || isNaN(index) || index < 0) {
+          console.error('无效的文件索引:', index);
+          return;
+        }
+        
+        try {
+          // 确保currentFiles数组存在且索引有效
+          if (!Array.isArray(currentFiles) || index >= currentFiles.length) {
+            console.error('文件索引超出范围');
+            return;
+          }
+          
+          // 从数组中移除文件
+          currentFiles.splice(index, 1);
+          
+          // 获取DOM元素并进行存在性检查
+          const previewContent = document.getElementById('filePreviewContent');
+          const previewContainer = document.getElementById('filePreviewContainer');
+          
+          if (!previewContent || !previewContainer) {
+            console.error('预览容器元素未找到');
+            return;
+          }
+          
+          // 确保子元素存在且索引有效
+          if (previewContent.children && previewContent.children.length > index) {
+            // 使用try-catch处理可能的DOM操作错误
+            try {
+              previewContent.removeChild(previewContent.children[index]);
+            } catch (domError) {
+              console.error('移除DOM元素时出错:', domError);
+              // 回退方案：刷新整个预览内容
+              refreshFilePreview();
+            }
+          }
+          
+          // 更新预览容器的显示状态
+          previewContainer.style.display = currentFiles.length > 0 ? 'block' : 'none';
+        } catch (error) {
+          console.error('移除文件时出错:', error);
+          // 出错时刷新整个预览内容作为回退方案
+          refreshFilePreview();
+        }
+      }
+      
+      // 刷新文件预览的辅助函数 - 用于错误恢复
+      function refreshFilePreview() {
+        try {
+          const previewContent = document.getElementById('filePreviewContent');
+          const previewContainer = document.getElementById('filePreviewContainer');
+          
+          if (!previewContent || !previewContainer) {
+            console.error('预览容器元素未找到');
+            return;
+          }
+          
+          // 清空当前预览内容
+          previewContent.innerHTML = '';
+          
+          // 重新创建所有剩余文件的预览
+          for (let i = 0; i < currentFiles.length; i++) {
+            const file = currentFiles[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-preview-item';
+            
+            // 根据文件类型显示不同图标
+            let icon = '📄';
+            if (file.type && file.type.startsWith('image/')) {
+              icon = '🖼️';
+            } else if (file.type && file.type.startsWith('audio/')) {
+              icon = '🔊';
+            }
+            
+            // 创建基本信息显示
+            // 使用字符串连接而非多行字符串，确保JavaScript语法正确
+              fileItem.innerHTML = '<div class="file-preview-info">' +
+                                  '  <span class="file-preview-icon">' + icon + '</span>' +
+                                  '  <span class="file-preview-name">' + file.name + '</span>' +
+                                  '  <span class="file-preview-size">' + ((file.size / 1024).toFixed(1)) + 'KB</span>' +
+                                  '  <span class="file-preview-remove" data-index="' + i + '">&times;</span>' +
+                                  '</div>';
+            
+            // 为移除按钮添加事件监听器
+            const removeBtn = fileItem.querySelector('.file-preview-remove');
+            if (removeBtn) {
+              removeBtn.onclick = function() {
+                removeFile(parseInt(this.getAttribute('data-index')));
+              };
+            }
+            
+            previewContent.appendChild(fileItem);
+          }
+          
+          // 更新预览容器的显示状态
+          previewContainer.style.display = currentFiles.length > 0 ? 'block' : 'none';
+        } catch (error) {
+          console.error('刷新文件预览时出错:', error);
+        }
+      }
+      
+      // 添加消息到聊天界面
+      function addMessageToChat(role, sender, content, files = []) {
+        const chatMessages = document.getElementById('chatMessages');
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message-item ${role}`;
+        
+        const avatarIcon = role === 'user' ? '👤' : '🤖';
+        
+        // 处理包含图片的内容
+        const processedContent = processContentWithImages(content);
+        
+        // 构建消息HTML - 将发送者信息移到头像下方
+        let messageHTML = `
+          <div class="avatar-container">
+            <div class="message-avatar">${avatarIcon}</div>
+            <div class="message-sender">${sender}</div>
+          </div>
+          <div class="message-content">
+            ${processedContent}
+        `;
+        
+        // 添加文件预览（如果有）
+        if (files && files.length > 0) {
+          messageHTML += '<div class="message-files">';
+          files.forEach(file => {
+            let fileIcon = '📄';
+            let fileType = '文件';
+            
+            if (file.type.startsWith('image/')) {
+              fileIcon = '🖼️';
+              fileType = '图片';
+            } else if (file.type.startsWith('audio/')) {
+              fileIcon = '🔊';
+              fileType = '音频';
+            }
+            
+            messageHTML += `
+              <div class="message-file-item">
+                <span>${fileIcon}</span>
+                <span>${file.name}</span>
+                <span class="file-size">${(file.size / 1024).toFixed(1)}KB</span>
+              </div>
+            `;
+          });
+          messageHTML += '</div>';
+        }
+        
+        messageHTML += '</div>';
+        messageDiv.innerHTML = messageHTML;
+        
+        chatMessages.appendChild(messageDiv);
+        
+        // 滚动到底部
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // 发送消息
+      async function sendMessage() {
+        console.log('======= 发送消息开始 =======');
+        
+        try {
+          const messageInput = document.getElementById('messageInput');
+          const messageText = messageInput.value.trim();
+          
+          console.log('消息文本:', messageText);
+          console.log('当前文件数量:', currentFiles.length);
+          
+          // 检查是否有消息内容或文件
+          if (messageText === '' && currentFiles.length === 0) {
+            console.log('没有消息内容或文件，退出函数');
+            return;
+          }
+          
+          // 添加用户消息到聊天界面
+          console.log('添加用户消息到聊天界面');
+          addMessageToChat('user', '我', messageText, currentFiles);
+          
+          // 清空输入框和文件列表
+          messageInput.value = '';
+          currentFiles = [];
+          const previewContainer = document.getElementById('filePreviewContainer');
+          if (previewContainer) {
+            previewContainer.style.display = 'none';
+          }
+          const previewContent = document.getElementById('filePreviewContent');
+          if (previewContent) {
+            previewContent.innerHTML = '';
+          }
+          
+          // 显示思考状态
+          console.log('显示思考状态');
+          showThinking();
+          
+          // 构建Dify API请求
+          const difyRequestBody = {
+            inputs: {},
+            query: messageText || '请描述您的症状',
+            response_mode: 'blocking',
+            user: userId
+          };
+          
+          if (conversationId) {
+            difyRequestBody.conversation_id = conversationId;
+          }
+          
+          // 如果有文件，先上传文件
+          const tempFiles = [...currentFiles];
+          if (tempFiles.length > 0) {
+            const uploadedFiles = [];
+            for (const file of tempFiles) {
+              try {
+                const uploadResult = await uploadFileToDify(file);
+                uploadedFiles.push({
+                  type: 'document',
+                  transfer_method: 'local_file',
+                  upload_file_id: uploadResult.id
+                });
+              } catch (error) {
+                console.error('文件上传失败:', error);
+              }
+            }
+            if (uploadedFiles.length > 0) {
+              difyRequestBody.files = uploadedFiles;
+            }
+          }
+          
+          console.log('准备API请求到 Dify:', `${DIFY_BASE_URL}/chat-messages`);
+          console.log('请求体:', JSON.stringify(difyRequestBody));
+          
+          // 直接调用Dify API
+          const response = await fetch(`${DIFY_BASE_URL}/chat-messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${DIFY_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(difyRequestBody)
+          });
+          
+          console.log('API响应状态码:', response.status);
+          
+          if (!response.ok) {
+            throw new Error(`API调用失败: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('API响应数据:', JSON.stringify(data));
+          
+          // 隐藏思考状态
+          console.log('隐藏思考状态');
+          hideThinking();
+          
+          // 更新会话ID
+          if (data.conversation_id) {
+            console.log('更新会话ID:', data.conversation_id);
+            conversationId = data.conversation_id;
+          }
+          
+          // 添加AI回复到聊天界面
+          const replyContent = data.content?.text || data.answer || '收到响应，但没有消息内容';
+          console.log('添加AI回复:', replyContent);
+          addMessageToChat('assistant', '智能导诊助手', replyContent);
+          
+        } catch (error) {
+          console.error('发送消息失败:', error);
+          console.error('错误类型:', error.name);
+          console.error('错误信息:', error.message);
+          hideThinking();
+          addMessageToChat('assistant', '智能导诊助手', '抱歉，系统暂时无法提供服务，请稍后再试。错误详情: ' + error.message);
+        } finally {
+          console.log('======= 发送消息结束 =======');
+        }
+        }
+        
+      // 上传文件到 Dify API
+      async function uploadFileToDify(file) {
+        console.log('上传文件到Dify:', file.name);
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('user', userId);
+        
+        const response = await fetch(`${DIFY_BASE_URL}/files/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${DIFY_API_KEY}`
+          },
+          body: formData
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('文件上传失败:', errorText);
+          throw new Error(`文件上传失败: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('文件上传成功:', result);
+        return result;
+      }
+      
+      // 开始新对话
+      function startNewChat() {
+        conversationId = '';
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+          chatMessages.innerHTML = `
+            <div class="welcome-message">
+              <div class="welcome-avatar">⚕️</div>
+              <div class="welcome-text">
+                <h4>欢迎使用智能导诊系统</h4>
+                <p>请描述您的症状，我将为您推荐合适的科室。</p>
+              </div>
+            </div>
+          `;
+        }
+        console.log('✅ 已开始新对话');
+      }
+        
+        // 调用Dify API，支持文件上传 - 使用后端代理
+      async function callDifyAPI(messageText, files = currentFiles, convId = conversationId) {
+        console.log('=== callDifyAPI函数开始执行 ===');
+        console.log('函数参数:', {messageText, files: files ? files.length : 0, convId});
+        
+        // 使用全局userId而不是每次生成新的
+        console.log('使用全局用户ID:', userId);
+        console.log('使用会话ID:', convId);
+        
+        // 确保有消息文本
+        const finalMessage = messageText || '这是一条默认测试消息';
+        console.log('最终发送的消息:', finalMessage);
+        
+        // 检查是否有文件需要上传
+        const hasFiles = files && files.length > 0;
+        console.log('是否包含文件:', hasFiles, '文件数量:', hasFiles ? files.length : 0);
+        
+        if (hasFiles) {
+          // 使用FormData上传文件
+          const formData = new FormData();
+          formData.append('query', finalMessage);
+          formData.append('user_id', userId);
+          
+          // 如果有会话ID，添加到请求中
+          if (convId) {
+            formData.append('conversation_id', convId);
+            console.log('添加会话ID到请求');
+          }
+          
+          // 添加文件
+          files.forEach((file, index) => {
+            formData.append('files', file, file.name);
+            console.log(`添加文件 ${index+1}:`, file.name, '大小:', file.size);
+          });
+          
+          console.log('准备发送文件上传API请求到/api/dify/chat');
+          console.log('FormData准备完成，包含', files.length, '个文件');
+          
+          try {
+            console.log('发起文件上传API请求...');
+            const response = await fetch('/api/dify/chat', {
+              method: 'POST',
+              body: formData
+            });
+            
+            console.log('文件上传API请求返回，状态码:', response.status);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('文件上传API请求失败:', errorData);
+              throw new Error(`API请求失败: ${errorData.error || response.status}`);
+            }
+            
+            const responseData = await response.json();
+            console.log('文件上传API响应数据:', responseData);
+            console.log('响应类型:', typeof responseData);
+            console.log('响应键值:', Object.keys(responseData));
+            return responseData;
+          } catch (error) {
+            console.error('文件上传API调用异常:', error);
+            console.error('错误类型:', error.name);
+            console.error('错误信息:', error.message);
+            throw error;
+          }
+        } else {
+          // 没有文件时，使用普通文本API
+          const requestBody = {
+            query: finalMessage,
+            user_id: userId
+          };
+          
+          // 如果有会话ID，添加到请求中
+          if (convId) {
+            requestBody.conversation_id = convId;
+            console.log('添加会话ID到请求体');
+          }
+          
+          console.log('准备发送普通文本API请求到/api/dify/chat');
+          console.log('请求体:', JSON.stringify(requestBody));
+          
+          try {
+            console.log('发起普通文本API请求...');
+            const response = await fetch('/api/dify/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestBody)
+            });
+            
+            console.log('普通文本API请求返回，状态码:', response.status);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('普通文本API请求失败:', errorData);
+              throw new Error(`API请求失败: ${errorData.error || response.status}`);
+            }
+            
+            const responseData = await response.json();
+            console.log('普通文本API响应数据:', responseData);
+            console.log('响应类型:', typeof responseData);
+            console.log('响应键值:', Object.keys(responseData));
+            return responseData;
+          } catch (error) {
+            console.error('普通文本API调用异常:', error);
+            console.error('错误类型:', error.name);
+            console.error('错误信息:', error.message);
+            throw error;
+          }
+        }
+      }
+      
+      // 处理内容中的图片URL，将其转换为可显示的图片标签 - 兼容Edge浏览器版本
+      function processContentWithImages(content) {
+        try {
+          // 参数验证
+          if (typeof content !== 'string') {
+            console.error('内容参数必须是字符串类型');
+            return content || '';
+          }
+          
+          // 检查内容是否已经包含HTML img标签，如果是则直接返回
+          if (content.indexOf('<img ') !== -1 || content.indexOf('<img>') !== -1) {
+            return content;
+          }
+          
+          // 使用兼容Edge的正则表达式匹配Markdown格式的图片
+          // 简化正则表达式以确保在Edge中可靠工作
+          const markdownImageRegex = /!\[([^\]]*)\]\(\s*([^)]+)\s*\)/g;
+          
+          // 替换Markdown图片为HTML img标签
+          // 使用更兼容的字符串处理方式
+          let processedContent = content;
+          let match;
+          const markdownMatches = [];
+          
+          // 先收集所有匹配项，避免在迭代过程中修改字符串
+          while ((match = markdownImageRegex.exec(content)) !== null) {
+            markdownMatches.push({ match: match[0], alt: match[1], url: match[2] });
+          }
+          
+          // 替换所有Markdown图片为HTML img标签
+          for (let i = 0; i < markdownMatches.length; i++) {
+            const { match, alt, url } = markdownMatches[i];
+            // 清理URL中的空白字符和反引号，确保Edge浏览器兼容性
+            const cleanUrl = String(url).trim().replace(/`/g, '');
+            // 使用字符串连接而非模板字符串，提高兼容性
+            const imgTag = '<img src="' + cleanUrl + '" alt="' + (alt || '图片') + '" class="chat-image" />';
+            processedContent = processedContent.replace(match, imgTag);
+          }
+          
+          // 正则表达式匹配单独的图片URL
+          const imageUrlRegex = /(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|bmp|svg))/gi;
+          const urlMatches = [];
+          
+          // 收集所有匹配的URL
+          while ((match = imageUrlRegex.exec(processedContent)) !== null) {
+            urlMatches.push(match[0]);
+          }
+          
+          // 替换单独的图片URL为HTML img标签，但避免重复替换
+          for (let i = 0; i < urlMatches.length; i++) {
+            let url = urlMatches[i];
+            // 清理URL中的反引号，确保Edge浏览器兼容性
+            url = url.replace(/`/g, '');
+            // 使用indexOf进行简单检查，避免复杂的字符串操作
+            if (processedContent.indexOf('<img src="' + url + '"') === -1) {
+              const imgTag = '<img src="' + url + '" alt="图片" class="chat-image" />';
+              processedContent = processedContent.replace(url, imgTag);
+            }
+          }
+          
+          return processedContent;
+        } catch (error) {
+          console.error('处理图片内容时出错:', error);
+          // 出错时返回原始内容，确保功能不会完全中断
+          return content || '';
+        }
+      }
+      
+      // 智能导诊响应处理函数 - 使用后端代理API
+      async function getMedicalResponse(userMessage) {
+        const USER_ID = 'user_' + Date.now(); // 生成临时用户ID
+        
+        try {
+          // 调用后端代理的Dify API
+          const requestBody = {
+            query: userMessage,
+            user_id: USER_ID
+          };
+          
+          // 如果有会话ID，添加到请求中
+          if (conversationId) {
+            requestBody.conversation_id = conversationId;
+          }
+          
+          const response = await fetch('/api/dify/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(30000) // 30秒超时
+          });
+          
+          if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          // 更新会话ID
+          if (data.conversation_id) {
+            conversationId = data.conversation_id;
+          }
+          
+          // 返回响应内容
+          return data.content?.text || data.answer || '';
+        } catch (error) {
+          console.error('Dify API调用失败:', error);
+          // 失败时返回备用响应
+          return getFallbackResponse(userMessage);
+        }
+      }
+      
+      // 备用响应生成（当API不可用时）
+      function getFallbackResponse(userInput) {
+        // 增强的模拟响应逻辑作为备用
+        const responses = {
+          '头痛': '根据您描述的头痛症状，我建议您可以考虑以下科室：\n1. 神经内科 - 头痛通常是神经系统相关问题\n2. 全科医学科 - 可以进行初步评估\n\n建议您记录头痛的频率、持续时间、严重程度以及是否伴有其他症状（如恶心、呕吐、视力模糊等），这些信息对医生的诊断会很有帮助。',
+          '发烧': '发热是身体的防御反应，根据您的情况，建议考虑：\n1. 全科医学科 - 进行初步评估和检查\n2. 感染科 - 如果伴有明显感染症状\n\n请注意测量体温，如果体温超过38.5℃或持续发热超过3天，建议立即就医。同时注意补充水分，多休息。',
+          '腹痛': '腹痛可能涉及多个器官系统，建议考虑：\n1. 消化内科 - 胃肠道问题最常见\n2. 普外科 - 如果疼痛剧烈或持续\n\n请观察是否有其他伴随症状，如呕吐、腹泻、发热等，并记录疼痛的部位、性质和持续时间，这些信息对医生的诊断很重要。',
+          '咳嗽': '咳嗽是常见症状，可能与多种原因有关：\n1. 呼吸内科 - 呼吸道感染最常见\n2. 耳鼻喉科 - 如果伴有喉咙痛或鼻塞\n\n请注意咳嗽是否有痰，痰的颜色和性质，以及是否伴有发热、胸痛等症状，这些信息有助于医生判断病因。',
+          '胸闷': '胸闷可能与心脏或呼吸系统有关，建议考虑：\n1. 心血管内科 - 排除心脏相关问题\n2. 呼吸内科 - 检查呼吸系统\n\n如果胸闷症状严重或伴有胸痛、呼吸困难，建议立即就医。',
+          '恶心': '恶心可能与消化系统有关，建议考虑：\n1. 消化内科 - 检查胃肠道问题\n2. 全科医学科 - 进行初步评估\n\n请注意观察是否有呕吐、腹痛等伴随症状，这些信息对诊断很有帮助。',
+          '失眠': '长期失眠可能影响健康，建议考虑：\n1. 神经内科 - 神经系统相关\n2. 心理科 - 情绪和心理因素\n\n保持规律作息，睡前避免使用电子设备，适当运动可能有助于改善睡眠。',
+          '住院': '住院流程通常包括以下步骤：\n1. 医生开具住院证明\n2. 前往住院处办理入院手续\n3. 缴纳住院押金\n4. 入住病房并接受护理评估\n\n以下是详细的住院流程图：\n<img src="https://cdn-mineru.openxlab.org.cn/result/2025-08-29/ce264a78-3b3b-4886-90ac-c7389ac9b8fa/c3b2efaa6bfa35f0a45afa4b66fff1f192436922b38bc127bf89d6612f39c62fb.jpg" alt="住院流程图" class="chat-image" />'
+        };
+        
+        // 检查是否有匹配的关键词
+        for (const [keyword, response] of Object.entries(responses)) {
+          if (userInput.includes(keyword)) {
+            return response + '\n\n(系统提示：当前使用智能导诊备用系统，建议后续检查网络连接或API服务状态。)';
+          }
+        }
+        
+        // 默认响应
+        return `感谢您的咨询。根据您描述的"${userInput}"症状，我建议您可以考虑以下科室：
+1. 全科医学科 - 进行初步评估
+2. 相关专科 - 根据具体症状可能需要到专科就诊
+
+建议您到医院就诊时，可以先到导诊台进行初步咨询，以便获得更精准的科室推荐。如果症状严重或持续不缓解，请及时就医。
+
+(系统提示：当前使用智能导诊备用系统，建议后续检查网络连接或API服务状态。)`;
+      }
+      
+
+        
+      
+    </script>
+  </body>
+</html>
