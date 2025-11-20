@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>系统测试</title>
+</head>
+<body>
+    <h1>医疗问诊系统测试</h1>
+    <div id="status"></div>
+    <button onclick="testConnection()">测试连接</button>
+    <button onclick="testChat()">测试聊天</button>
+    
+    <script>
+        async function testConnection() {
+            const status = document.getElementById('status');
+            status.innerHTML = '正在测试连接...';
+            
+            try {
+                // 测试后端服务
+                const backendResponse = await fetch('http://localhost:3000/api/health');
+                const backendData = await backendResponse.json();
+                status.innerHTML = '✅ 后端服务正常: ' + JSON.stringify(backendData);
+                
+            } catch (error) {
+                status.innerHTML = '❌ 连接错误: ' + error.message;
+            }
+        }
+        
+        async function testChat() {
+            const status = document.getElementById('status');
+            status.innerHTML = '正在测试聊天功能...';
+            
+            try {
+                // 测试聊天功能
+                const chatResponse = await fetch('http://localhost:3000/api/dify/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: '你好，我需要医疗咨询',
+                        user: 'test_user_' + Date.now()
+                    })
+                });
+                
+                if (chatResponse.ok) {
+                    const chatData = await chatResponse.json();
+                    status.innerHTML = '✅ 聊天功能正常<br>响应: ' + JSON.stringify(chatData, null, 2);
+                } else {
+                    status.innerHTML = '❌ 聊天功能失败: ' + chatResponse.status;
+                }
+                
+            } catch (error) {
+                status.innerHTML = '❌ 聊天功能错误: ' + error.message;
+            }
+        }
+        
+        // 自动测试
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html>

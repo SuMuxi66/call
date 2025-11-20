@@ -954,13 +954,21 @@
         const processedContent = processContentWithImages(content);
         
         // 构建消息HTML - 将发送者信息移到头像下方
+        // 对助手消息进行Markdown转纯文本处理
+        let finalContent = processedContent;
+        if (role === 'assistant') {
+          finalContent = convertMarkdownToPlainText(processedContent);
+          // 转换后再处理图片显示
+          finalContent = processContentWithImages(finalContent);
+        }
+        
         let messageHTML = `
           <div class="avatar-container">
             <div class="message-avatar">${avatarIcon}</div>
             <div class="message-sender">${sender}</div>
           </div>
           <div class="message-content">
-            ${processedContent}
+            ${finalContent}
         `;
         
         // 添加文件预览（如果有）
@@ -1021,6 +1029,7 @@
           
           // 清空输入框和文件列表
           messageInput.value = '';
+          const tempFiles = [...currentFiles];
           currentFiles = [];
           const previewContainer = document.getElementById('filePreviewContainer');
           if (previewContainer) {
@@ -1035,74 +1044,43 @@
           console.log('显示思考状态');
           showThinking();
           
-          // 构建Dify API请求
-          const difyRequestBody = {
-            inputs: {},
-            query: messageText || '请描述您的症状',
-            response_mode: 'blocking',
-            user: userId
-          };
+          // 调用后端API处理消息和文件
+          const response = await callDifyAPI(messageText, tempFiles, conversationId);
           
-          if (conversationId) {
-            difyRequestBody.conversation_id = conversationId;
-          }
-          
-          // 如果有文件，先上传文件
-          const tempFiles = [...currentFiles];
-          if (tempFiles.length > 0) {
-            const uploadedFiles = [];
-            for (const file of tempFiles) {
-              try {
-                const uploadResult = await uploadFileToDify(file);
-                uploadedFiles.push({
-                  type: 'document',
-                  transfer_method: 'local_file',
-                  upload_file_id: uploadResult.id
-                });
-              } catch (error) {
-                console.error('文件上传失败:', error);
-              }
-            }
-            if (uploadedFiles.length > 0) {
-              difyRequestBody.files = uploadedFiles;
-            }
-          }
-          
-          console.log('准备API请求到 Dify:', `${DIFY_BASE_URL}/chat-messages`);
-          console.log('请求体:', JSON.stringify(difyRequestBody));
-          
-          // 直接调用Dify API
-          const response = await fetch(`${DIFY_BASE_URL}/chat-messages`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${DIFY_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(difyRequestBody)
-          });
-          
-          console.log('API响应状态码:', response.status);
-          
-          if (!response.ok) {
-            throw new Error(`API调用失败: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          console.log('API响应数据:', JSON.stringify(data));
+          console.log('API响应数据:', JSON.stringify(response));
           
           // 隐藏思考状态
           console.log('隐藏思考状态');
           hideThinking();
           
           // 更新会话ID
-          if (data.conversation_id) {
-            console.log('更新会话ID:', data.conversation_id);
-            conversationId = data.conversation_id;
+          if (response.conversation_id) {
+            console.log('更新会话ID:', response.conversation_id);
+            conversationId = response.conversation_id;
           }
           
           // 添加AI回复到聊天界面
-          const replyContent = data.content?.text || data.answer || '收到响应，但没有消息内容';
-          console.log('添加AI回复:', replyContent);
+          // 修复：从response.response中提取实际的Dify响应内容
+          let replyContent;
+          if (response.success && response.response) {
+            // 成功后端返回的结构：{success: true, response: {...}}
+            const actualResponse = response.response;
+            replyContent = actualResponse?.answer || 
+                          actualResponse?.content?.text || 
+                          actualResponse?.text ||
+                          '收到响应，但没有消息内容';
+            console.log('从response.response中提取回复:', replyContent);
+          } else if (response.answer || response.content) {
+            // 如果直接返回了Dify响应格式
+            replyContent = response.answer || response.content?.text || '收到响应，但没有消息内容';
+            console.log('从直接响应中提取回复:', replyContent);
+          } else {
+            // 其他情况
+            replyContent = '收到响应，但没有消息内容';
+            console.log('使用默认回复，响应结构:', JSON.stringify(response));
+          }
+          
+          console.log('最终回复内容:', replyContent);
           addMessageToChat('assistant', '智能导诊助手', replyContent);
           
         } catch (error) {
@@ -1163,113 +1141,63 @@
         
         // 调用Dify API，支持文件上传 - 使用后端代理
       async function callDifyAPI(messageText, files = currentFiles, convId = conversationId) {
-        console.log('=== callDifyAPI函数开始执行 ===');
-        console.log('函数参数:', {messageText, files: files ? files.length : 0, convId});
+        console.log('======= 调用 Dify API 开始 =======');
+        console.log('消息:', messageText);
+        console.log('文件数量:', files.length);
+        console.log('会话ID:', convId);
         
-        // 使用全局userId而不是每次生成新的
-        console.log('使用全局用户ID:', userId);
-        console.log('使用会话ID:', convId);
-        
-        // 确保有消息文本
-        const finalMessage = messageText || '这是一条默认测试消息';
-        console.log('最终发送的消息:', finalMessage);
-        
-        // 检查是否有文件需要上传
-        const hasFiles = files && files.length > 0;
-        console.log('是否包含文件:', hasFiles, '文件数量:', hasFiles ? files.length : 0);
-        
-        if (hasFiles) {
-          // 使用FormData上传文件
+        try {
+          // 创建 FormData 对象
           const formData = new FormData();
-          formData.append('query', finalMessage);
-          formData.append('user_id', userId);
           
-          // 如果有会话ID，添加到请求中
+          // 添加文本消息
+          formData.append('query', messageText || '请描述您的症状');
+          
+          // 如果有会话ID，则添加
           if (convId) {
             formData.append('conversation_id', convId);
-            console.log('添加会话ID到请求');
           }
           
-          // 添加文件
-          files.forEach((file, index) => {
-            formData.append('files', file, file.name);
-            console.log(`添加文件 ${index+1}:`, file.name, '大小:', file.size);
+          // 添加用户标识
+          formData.append('user', userId);
+          
+          // 添加响应模式
+          formData.append('response_mode', 'blocking');
+          
+          // 添加输入参数
+          formData.append('inputs', JSON.stringify({}));
+          
+          // 如果有文件，则逐个添加到 FormData 中
+          if (files && files.length > 0) {
+            for (let i = 0; i < files.length; i++) {
+              formData.append('files', files[i]);
+            }
+          }
+          
+          console.log('FormData 准备完成');
+          
+          // 发送请求到后端 - 使用绝对路径支持跨域
+          const response = await fetch('http://localhost:7000/api/dify/chat', {
+            method: 'POST',
+            body: formData
           });
           
-          console.log('准备发送文件上传API请求到/api/dify/chat');
-          console.log('FormData准备完成，包含', files.length, '个文件');
+          console.log('后端响应状态:', response.status);
           
-          try {
-            console.log('发起文件上传API请求...');
-            const response = await fetch('/api/dify/chat', {
-              method: 'POST',
-              body: formData
-            });
-            
-            console.log('文件上传API请求返回，状态码:', response.status);
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              console.error('文件上传API请求失败:', errorData);
-              throw new Error(`API请求失败: ${errorData.error || response.status}`);
-            }
-            
-            const responseData = await response.json();
-            console.log('文件上传API响应数据:', responseData);
-            console.log('响应类型:', typeof responseData);
-            console.log('响应键值:', Object.keys(responseData));
-            return responseData;
-          } catch (error) {
-            console.error('文件上传API调用异常:', error);
-            console.error('错误类型:', error.name);
-            console.error('错误信息:', error.message);
-            throw error;
-          }
-        } else {
-          // 没有文件时，使用普通文本API
-          const requestBody = {
-            query: finalMessage,
-            user_id: userId
-          };
-          
-          // 如果有会话ID，添加到请求中
-          if (convId) {
-            requestBody.conversation_id = convId;
-            console.log('添加会话ID到请求体');
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('后端响应错误:', errorText);
+            throw new Error(`后端请求失败: ${response.status} ${errorText}`);
           }
           
-          console.log('准备发送普通文本API请求到/api/dify/chat');
-          console.log('请求体:', JSON.stringify(requestBody));
+          const data = await response.json();
+          console.log('后端响应数据:', JSON.stringify(data));
           
-          try {
-            console.log('发起普通文本API请求...');
-            const response = await fetch('/api/dify/chat', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(requestBody)
-            });
-            
-            console.log('普通文本API请求返回，状态码:', response.status);
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              console.error('普通文本API请求失败:', errorData);
-              throw new Error(`API请求失败: ${errorData.error || response.status}`);
-            }
-            
-            const responseData = await response.json();
-            console.log('普通文本API响应数据:', responseData);
-            console.log('响应类型:', typeof responseData);
-            console.log('响应键值:', Object.keys(responseData));
-            return responseData;
-          } catch (error) {
-            console.error('普通文本API调用异常:', error);
-            console.error('错误类型:', error.name);
-            console.error('错误信息:', error.message);
-            throw error;
-          }
+          console.log('======= 调用 Dify API 结束 =======');
+          return data;
+        } catch (error) {
+          console.error('调用 Dify API 失败:', error);
+          throw error;
         }
       }
       
@@ -1341,46 +1269,104 @@
         }
       }
       
+      // Markdown转纯文本转换函数 - 按照Dify格式转换机制，保留基本格式
+      function convertMarkdownToPlainText(markdownContent) {
+        if (!markdownContent) return '';
+        
+        let plainText = markdownContent;
+        
+        // 1. 移除图片链接 ![alt](url)
+        plainText = plainText.replace(/!\[.*?\]\(.*?\)/g, '');
+        
+        // 2. 移除超链接但保留文本 [text](url) -> text
+        plainText = plainText.replace(/\[(.*?)\]\((.*?)\)/g, '$1');
+        
+        // 3. 保留粗体标记，但转换为更简洁的形式 **text** -> text (保留视觉强调)
+        // 不移除粗体，让用户界面显示自然强调
+        
+        // 4. 保留斜体标记 *text* -> text (保留视觉强调)
+        // 不移除斜体，保持文本的自然风格
+        
+        // 5. 保留标题标记但简化 #、##、### 等 -> 保持缩进结构
+         // 将标题转换为带缩进的段落，保持层次结构，并在标题后添加换行
+         // 如果标题中包含*字符，用空格替换
+         plainText = plainText.replace(/^###\s+(.*)$/gm, function(match, title) {
+           return '    ' + title.replace(/\*/g, ' ') + '\n    ';  // 三级标题 -> 4空格缩进 + 标题(*替换为空格) + 换行 + 缩进
+         });
+         plainText = plainText.replace(/^##\s+(.*)$/gm, function(match, title) {
+           return '  ' + title.replace(/\*/g, ' ') + '\n  ';  // 二级标题 -> 2空格缩进 + 标题(*替换为空格) + 换行 + 缩进
+         });
+         plainText = plainText.replace(/^#\s+(.*)$/gm, function(match, title) {
+           return title.replace(/\*/g, ' ') + '\n  ';  // 一级标题 -> 标题(*替换为空格) + 换行 + 缩进
+         });
+        
+        // 6. 保留列表结构但简化符号
+        // 无序列表 -、*、+ -> 保持缩进但移除符号
+        plainText = plainText.replace(/^\s*[-*+]\s+/gm, '  • ');  // 无序列表 -> 圆点
+        // 有序列表保持数字但简化格式
+        plainText = plainText.replace(/^\s*(\d+)\.\s+/gm, '  $1. ');  // 有序列表 -> 保持数字
+        
+        // 7. 移除代码块标记 ```，但保留代码内容
+        plainText = plainText.replace(/```/g, '');
+        
+        // 8. 清理多余的空行，但保持段落间距
+        plainText = plainText.replace(/\n{4,}/g, '\n\n\n');  // 最多保留3个空行
+        
+        // 9. 去除首尾空白
+        plainText = plainText.trim();
+        
+        return plainText;
+      }
+      
       // 智能导诊响应处理函数 - 使用后端代理API
       async function getMedicalResponse(userMessage) {
-        const USER_ID = 'user_' + Date.now(); // 生成临时用户ID
+        // 使用全局userId而不是每次生成新的
+        console.log('调用getMedicalResponse函数，用户ID:', userId);
         
         try {
-          // 调用后端代理的Dify API
-          const requestBody = {
-            query: userMessage,
-            user_id: USER_ID
-          };
+          // 使用FormData格式发送请求
+          const formData = new FormData();
+          formData.append('query', userMessage);
+          formData.append('user', userId);
           
           // 如果有会话ID，添加到请求中
           if (conversationId) {
-            requestBody.conversation_id = conversationId;
+            formData.append('conversation_id', conversationId);
+            console.log('添加会话ID到请求');
           }
+          
+          console.log('准备发送API请求到/api/dify/chat');
           
           const response = await fetch('/api/dify/chat', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(30000) // 30秒超时
+            body: formData
           });
           
+          console.log('API请求返回，状态码:', response.status);
+          
           if (!response.ok) {
-            throw new Error(`API请求失败: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            console.error('API请求失败:', errorData);
+            throw new Error(`API请求失败: ${errorData.error || response.status}`);
           }
           
           const data = await response.json();
+          console.log('API响应数据:', data);
           
           // 更新会话ID
           if (data.conversation_id) {
+            console.log('更新会话ID:', data.conversation_id);
             conversationId = data.conversation_id;
           }
           
           // 返回响应内容
-          return data.content?.text || data.answer || '';
+          const replyContent = data.content?.text || data.answer || '';
+          console.log('返回响应内容:', replyContent);
+          return replyContent;
         } catch (error) {
           console.error('Dify API调用失败:', error);
+          console.error('错误类型:', error.name);
+          console.error('错误信息:', error.message);
           // 失败时返回备用响应
           return getFallbackResponse(userMessage);
         }
